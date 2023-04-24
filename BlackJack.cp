@@ -1,366 +1,160 @@
-/*
-*BlackJack: Analyzes Player Strategies
-*Joel Gravestock
-*/
+#include <cstdlib>
+#include <ctime>
+#include <iostream>
 
+enum class GameResult
+{
+	CONTINUE,
+	GAME_OVER
+};
 
-#include <stdlib.h>
-#include <time.h>
-#include <iostream.h>
+int psum = 0;
+int hsum = 0;
+int hwin = 0;
+int pwin = 0;
+int draw = 0;
+int luck = 0;
+int pstrat = 0;
+int series = 1;
+int deck[52] = {0};
+int deck_index = 0;
+int phand[8] = {0};
+int pi = 0;
+int hhand[8] = {0};
+int hi = 0;
 
-const int Continue=1;
-const int Game_Over=0;
-
-int Psum=0;
-int Hsum=0;
-int hwin=0;
-int pwin=0;
-int draw=0;
-int luck=0;
-int pstrat=0;
-int series=1;
-int Deck[52]={0};
-int Di=0;
-int Phand[8]={0};
-int Pi=0;
-int Hhand[8]={0};
-int Hi=0;
-int Ptotal=0;
-int Htotal=0;
-int Dtotal=0;
-int PStotal=0;
-int Ltotal=0;
-
-
-void Fill_Deck();
-void Shuffle();
-void Deal();
-int After_Deal();
-int PStrategy();
-int PStrategy2();
-int HStrategy();
-void Evaluate();
-void Display_Results();
-void HCard_Count();
-void PCard_Count();
-void PCard_Count2();
-void Analysis();
+void fill_deck();
+void shuffle_deck();
+void deal();
+GameResult after_deal();
+bool p_strategy();
+bool p_strategy_2();
+bool h_strategy();
+void evaluate();
+void display_results();
+void h_card_count();
+void p_card_count();
+void p_card_count_2();
+void analysis();
 
 int main()
+{
+	int seed = static_cast<int>(std::time(nullptr));
+	std::srand(seed);
+	fill_deck();
+
+	for (series = 1; series <= 10; ++series)
 	{
-	int seed=clock();
-	srand(seed);
-	Fill_Deck();
-	for(series=1;series<=10;series++)
+		draw = 0;
+		hwin = 0;
+		pwin = 0;
+		luck = 0;
+		pstrat = 0;
+
+		for (int game = 1; game <= 1000; ++game)
 		{
-		draw=0;
-		hwin=0;
-		pwin=0;
-		luck=0;
-		pstrat=0;
-		for(int game=1;game<=1000;game++)
+			shuffle_deck();
+			deal();
+
+			if (after_deal() == GameResult::CONTINUE)
 			{
-			Shuffle();
-			Deal();
-			if(After_Deal())
+				if (p_strategy() && h_strategy())
 				{
-				if(PStrategy())
-					if(HStrategy())
-						Evaluate();
+					evaluate();
 				}
+			}
 			else
-				luck++;
+			{
+				++luck;
 			}
-			
-		Ptotal+=pwin;
-		Htotal+=hwin;
-		Dtotal+=draw;
-		PStotal+=draw;
-		Ltotal+=luck;
-		
 		}
-	Analysis();	
+
+		analysis();
+	}
+
 	return 0;
-	}
-	
-	
-	
-void Fill_Deck()
-	{
-	for(int i=0;i<52;i++)
-		{
-		int cd=(i+1)%13+1;
-		if(cd>9)
-			Deck[i]=10;
-		else if(cd==1)
-			Deck[i]=11;
-		else
-			Deck[i]=cd;		
-		}
-	}
-	
-	
-	
-	
-void Shuffle()
-	{
-	for(int i=0;i<52;i++)
-		{
-		int random=rand()%52;
-		int Hold;
-		Hold=Deck[i];
-		Deck[i]=Deck[random];
-		Deck[random]=Hold;
-		}
-	}
-	
-	
+}
 
-void Deal()
+void fill_deck()
+{
+	for (int i = 0; i < 52; ++i)
 	{
-	for(int i=0;i<8;i++)
-		{
-		Phand[i]=0;
-		Hhand[i]=0;
-		}
-	Pi=0;
-	Hi=0;
-	Di=0;
-	Phand[Pi++]=Deck[Di++];
-	Hhand[Hi++]=Deck[Di++];
-	Phand[Pi++]=Deck[Di++];
-	Hhand[Hi++]=Deck[Di++];
+		int cd = (i + 1) % 13 + 1;
+		deck[i] = (cd > 9) ? 10 : (cd == 1) ? 11
+																				: cd;
 	}
-	
-	
-	
-int After_Deal()
+}
+
+void shuffle_deck()
+{
+	for (int i = 51; i > 0; --i)
 	{
-	int Result=0;
-	HCard_Count();
-	PCard_Count();
-	if(Psum==21&&Hsum==21)
-		draw++;
-	else if(Hsum==21)
-		hwin++;
-	else if(Psum==21)
-		pwin++;
-	else
-		Result=Continue;
-	return Result;
+		int j = std::rand() % (i + 1);
+		std::swap(deck[i], deck[j]);
 	}
-	
-	
-	
-int PStrategy()
+	deck_index = 0;
+}
+
+void deal()
+{
+	for (int i = 0; i < 8; ++i)
 	{
-	int Result=1;
-	while(Psum<17)
-		{
-		Phand[Pi++]=Deck[Di++];
-		PCard_Count();
-		}
-	if(Psum>21)
-		{
-		Result=0;
-		hwin++;
-		}
-	return Result;
+		phand[i] = 0;
+		hhand[i] = 0;
+	}
+	pi = 0;
+	hi = 0;
+
+	phand[pi++] = deck[deck_index++];
+	hhand[hi++] = deck[deck_index++];
+	phand[pi++] = deck[deck_index++];
+	hhand[hi++] = deck[deck_index++];
+}
+
+GameResult after_deal()
+{
+	h_card_count();
+	p_card_count();
+
+	if (psum == 21 && hsum == 21)
+	{
+		++draw;
+		return GameResult::GAME_OVER;
+	}
+	else if (hsum == 21)
+	{
+		++hwin;
+		return GameResult::GAME_OVER;
+	}
+	else if (psum == 21)
+	{
+		++pwin;
+		return GameResult::GAME_OVER;
 	}
 
+	return GameResult::CONTINUE;
+}
 
+bool p_strategy()
+{
+	while (psum < 17)
+	{
+		phand[pi++] = deck[deck_index++];
+		p_card_count();
+		if (psum > 21)
+		{
+			++hwin;
+			return false;
+		}
+	}
+	return true;
+}
 
-int PStrategy2()
-	{
-	int Ace=0;
-	int Result=1;
-	
-	for(int i=0;Phand[i]==0;i++)
-		{
-		if(Phand[i]==11)
-			Ace=i;
-		while(Psum<18&&Phand[Ace]==11)
-			{
-			Phand[Pi++]=Deck[Di++];
-			PCard_Count2();
-			if(Psum>21)
-				{
-				Phand[Ace]=1;
-				PCard_Count2();
-				}
-			}
-		if(Phand[Ace]==11)	
-			if(Psum==18&&Hhand[3]>8)
-				{
-				Phand[Pi++]=Deck[Di++];
-				PCard_Count2();
-				if(Psum>21)
-					{
-					Phand[Ace]=1;
-					PCard_Count2();
-					}
-				 }
-		}	
-		
-	while(Psum<12)
-		{
-		Phand[Pi++]=Deck[Di++];
-		PCard_Count();
-		}
-	if(Psum==12)
-		if(Hhand[3]<4&&Hhand[3]>6)
-			{
-			Phand[Pi++]=Deck[Di++];
-			PCard_Count();
-			}
-	if(Hhand[3]>6)
-		while(Psum>12&&Psum<17)
-			{
-			Phand[Pi++]=Deck[Di++];
-			PCard_Count();
-			}
-	if(Psum>21)
-		{
-		hwin++;
-		Result=0;
-		}										
-	return Result;
-	}
-	
-	
-int HStrategy()
-	{
-	int Result=1;
-	while(Hsum<17&&Hsum<Psum)
-		{
-		Hhand[Hi++]=Deck[Di++];
-		HCard_Count();
-		}
-	if(Hsum>21)
-		{
-		Result=0;
-		pwin++;
-		pstrat++;
-		}
-	return Result;
-	}
-	
-	
-	
-void Evaluate()
-	{
-	if(Psum==Hsum)
-		draw++;
-	else if(Psum>Hsum)
-		{
-		pwin++;
-		pstrat++;
-		}
-	else
-		hwin++;
-	}
-	
-	
-	
-void Display_Results()
-	{
-	cout<<"Series:   "<<series<<endl;
-	cout<<"House wins:   "<<hwin<<endl;
-	cout<<"Player wins:   "<<pwin<<endl;
-	cout<<"Pushes:   "<<draw<<endl;
-	cout<<"Lucky wins:   "<<luck<<endl;
-	cout<<"Wins from player strategy:   "<<pstrat<<endl;
-	}
-	
-	
-	
-	
-void HCard_Count()
-	{
-	int True=0;
-	int Ace=0;
-	
-	do
-		{
-		for(int i=0;i<8;i++)
-	  		{
-	  		Hsum=0;
-	  		True=0;
-			Ace=0;
-			Hsum+=Hhand[i];
-			if(Hhand[i]==11)
-				{
-				True=1;
-				Ace=i;
-				}
-			}																				
-	  	if(True&&Hsum>21)
-	  		{
-	  		Hhand[Ace]=1;
-	  		for(int j=0;j<8;j++)
-	  			{
-	  			Hsum=0;
-	  			Hsum+=Hhand[j];
-	  			}
-	  		}
-	  	}		
-	while(True);
-	}
-	
-	
-	
-void PCard_Count()
-	{
-	int True=0;
-	int Ace=0;
-	
-	do
-		{
-		for(int i=0;i<8;i++)
-	  		{
-	  		Psum=0;
-	  		True=0;
-			Ace=0;
-			Psum+=Phand[i];
-			if(Phand[i]==11)
-				{
-				True=1;
-				Ace=i;
-				}
-			}																				
-	  	if(True&&Psum>21)
-	  		{
-	  		Phand[Ace]=1;
-	  		for(int j=0;j<8;j++)
-	  			{
-	  			Psum=0;
-	  			Psum+=Phand[j];
-	  			}
-	  		}
-	  	}		
-	while(True);
-	}
-
-	
-	
-	
-void PCard_Count2()
-	{
-	Psum=0;
-	for(int i=0;i<8;i++)
-		Psum+=Phand[i];
-	}		
-	
-	
-	
-void Analysis()
-	{
-	int Games=Ptotal+Htotal+Dtotal;
-	cout<<"There were "<<Games<<" games played."<<endl;
-	cout<<"Player won "<<Ptotal%Games/100<<"% of the time, or a total of ";
-	cout<<Ptotal<<" games."<<endl;	 				
-	cout<<"Of those wins, "<<PStotal%Ptotal/100<<"%, or "<<PStotal;
-	cout<<" of them, incorporated the players strategy."<<endl;
-	cout<<Ltotal%Games/100<<"%, or "<<Ltotal<<" of the games, ended after the deal."<<endl;
-	cout<<Dtotal%Games/100<<"%, or "<<Dtotal<<" of the games, were a push."<<endl;
-	}
+bool p_strategy_2();
+bool h_strategy();
+void evaluate();
+void display_results();
+void h_card_count();
+void p_card_count();
+void p_card_count_2();
+void analysis();
